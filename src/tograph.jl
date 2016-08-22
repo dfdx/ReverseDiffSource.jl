@@ -5,37 +5,37 @@
 #########################################################################
 
 ##########  Parameterized type to ease AST exploration  ############
-  type ExH{H}
+type ExH{H}
     head::Symbol
     args::Vector
     typ::Any
-  end
-  toExH(ex::Expr) = ExH{ex.head}(ex.head, ex.args, ex.typ)
-  toExpr(ex::ExH) = Expr(ex.head, ex.args...)
+end
+toExH(ex::Expr) = ExH{ex.head}(ex.head, ex.args, ex.typ)
+toExpr(ex::ExH) = Expr(ex.head, ex.args...)
 
-  typealias ExEqual    ExH{:(=)}
-  typealias ExDColon   ExH{:(::)}
-  typealias ExColon    ExH{:(:)}
-  typealias ExPEqual   ExH{:(+=)}
-  typealias ExMEqual   ExH{:(-=)}
-  typealias ExTEqual   ExH{:(*=)}
-  typealias ExTrans    ExH{symbol("'")}
-  typealias ExCall     ExH{:call}
-  typealias ExBlock    ExH{:block}
-  typealias ExLine     ExH{:line}
-  typealias ExVcat     ExH{:vcat}
-  typealias ExVect     ExH{:vect}
-  typealias ExCell1d   ExH{:cell1d}
-  typealias ExCell     ExH{:cell1d}
-  typealias ExFor      ExH{:for}
-  typealias ExRef      ExH{:ref}
-  typealias ExIf       ExH{:if}
-  typealias ExComp     ExH{:comparison}
-  typealias ExDot      ExH{:.}
-  typealias ExTuple    ExH{:tuple}
-  typealias ExReturn   ExH{:return}
-  typealias ExBody     ExH{:body}
-  typealias ExQuote    ExH{:QuoteNode}
+typealias ExEqual    ExH{:(=)}
+typealias ExDColon   ExH{:(::)}
+typealias ExColon    ExH{:(:)}
+typealias ExPEqual   ExH{:(+=)}
+typealias ExMEqual   ExH{:(-=)}
+typealias ExTEqual   ExH{:(*=)}
+typealias ExTrans    ExH{Symbol("'")}
+typealias ExCall     ExH{:call}
+typealias ExBlock    ExH{:block}
+typealias ExLine     ExH{:line}
+typealias ExVcat     ExH{:vcat}
+typealias ExVect     ExH{:vect}
+typealias ExCell1d   ExH{:cell1d}
+typealias ExCell     ExH{:cell1d}
+typealias ExFor      ExH{:for}
+typealias ExRef      ExH{:ref}
+typealias ExIf       ExH{:if}
+typealias ExComp     ExH{:comparison}
+typealias ExDot      ExH{:.}
+typealias ExTuple    ExH{:tuple}
+typealias ExReturn   ExH{:return}
+typealias ExBody     ExH{:body}
+typealias ExQuote    ExH{:QuoteNode}
 
 
 #  s     : expression to convert
@@ -93,10 +93,10 @@ function tograph(s, evalmod=Main, svars=Any[])
 
         # catch getindex, etc. qualified by a module
         sf2 = if isa(sf, Expr) && sf.head == :. && isa(sf.args[2], QuoteNode)
-                sf.args[2].value
-              else
-                nothing
-              end
+            sf.args[2].value
+        else
+            nothing
+        end
 
         if sf == :getindex || sf2 == :getindex
             nv = explore(ex.args[2])
@@ -105,14 +105,14 @@ function tograph(s, evalmod=Main, svars=Any[])
 
         elseif sf == :setindex! || sf2 == :setindex!
             isa(ex.args[2], Symbol) ||
-                error("[tograph] setindex! only allowed on variables, $(ex.args[2]) found")
+            error("[tograph] setindex! only allowed on variables, $(ex.args[2]) found")
 
             nv  = explore(ex.args[2]) # node whose subpart is assigned
             ps  = indexspec(nv, ex.args[4:end])
             rhn = addnode!(g, NSRef(:setidx,
                                     [ nv,                               # var modified in pos #1
-                                      explore(ex.args[3]),              # value affected in pos #2
-                                      ps...] ))                         # dims
+                                     explore(ex.args[3]),              # value affected in pos #2
+                                     ps...] ))                         # dims
 
             rhn.precedence = filter(n -> nv in n.parents && n != rhn, g.nodes)
             g.seti[rhn] = ex.args[2]
@@ -124,12 +124,12 @@ function tograph(s, evalmod=Main, svars=Any[])
 
         elseif sf == :setfield! || sf2 == :setfield!
             isa(ex.args[2], Symbol) ||
-                error("[tograph] setfield! only allowed on variables, $(ex.args[2]) found")
+            error("[tograph] setfield! only allowed on variables, $(ex.args[2]) found")
 
             nv  = explore(ex.args[2]) # node whose subpart is assigned
             rhn = addnode!(g, NSDot(ex.args[3],
                                     [ nv,                               # var modified in pos #1
-                                      explore(ex.args[4])]))            # value affected in pos #2
+                                     explore(ex.args[4])]))            # value affected in pos #2
 
             rhn.precedence = filter(n -> nv in n.parents && n != rhn, g.nodes)
             g.seti[rhn] = ex.args[2]
@@ -138,7 +138,7 @@ function tograph(s, evalmod=Main, svars=Any[])
 
         else
             return addnode!(g, NCall(  :call,
-                                        map(explore, ex.args[1:end]) ))
+                                     map(explore, ex.args[1:end]) ))
         end
     end
 
@@ -153,7 +153,7 @@ function tograph(s, evalmod=Main, svars=Any[])
                 vn = explore(lhss)
                 rhn  = addnode!(g, NSRef(:setidx,
                                          [ vn,                     # var modified in pos #1
-                                           explore(ex.args[2]) ])) # value affected in pos #2
+                                          explore(ex.args[2]) ])) # value affected in pos #2
                 rhn.precedence = filter(n -> vn in n.parents && n != rhn, g.nodes)
 
             else # never set before ? assume it is created here
@@ -169,11 +169,11 @@ function tograph(s, evalmod=Main, svars=Any[])
 
         elseif isRef(lhs)   # x[i] = ....
             lhss = lhs.args[1]
-            explore( Expr(:call, :setindex!, lhss, ex.args[2], lhs.args[2:end]...) )
+            explore(Expr(:call, :setindex!, lhss, ex.args[2], lhs.args[2:end]...))
 
         elseif isDot(lhs)   # x.field = ....
             lhss = lhs.args[1]
-            explore( Expr(:call, :setfield!, lhss, lhs.args[2], ex.args[2]) )
+            explore(Expr(:call, :setfield!, lhss, lhs.args[2], ex.args[2]))
 
         else
             error("[tograph] $(toExpr(ex)) not allowed on LHS of assigment")
@@ -187,7 +187,7 @@ function tograph(s, evalmod=Main, svars=Any[])
     function explore(ex::ExFor)
         is = ex.args[1].args[1]
         isa(is, Symbol) ||
-            error("[tograph] for loop using several indexes : $is ")
+        error("[tograph] for loop using several indexes : $is ")
 
         # explore the index range
         nir = explore(ex.args[1].args[2])
@@ -241,45 +241,45 @@ function tograph(s, evalmod=Main, svars=Any[])
 
             na==:(:) && (na = Expr(:(:), 1, :end) )  # replace (:) with (1:end)
 
-            # explore the dimension expression
-            nsvars = union(svars, collect(syms(g.seti)))
-            ng = tograph(na, evalmod, nsvars)
+        # explore the dimension expression
+        nsvars = union(svars, collect(syms(g.seti)))
+        ng = tograph(na, evalmod, nsvars)
 
-            # find mappings for onodes, including :end
-            vmap = Dict()
-            for (k, sym) in ng.exti.kv
-                vmap[sym] = sym == :end ? ns : explore(sym)
-            end
-
-            nd = addgraph!(ng, g, vmap)
-            push!(p, nd)
-        end
-        p
+        # find mappings for onodes, including :end
+        vmap = Dict()
+        for (k, sym) in ng.exti.kv
+            vmap[sym] = sym == :end ? ns : explore(sym)
     end
 
-    #  top level graph
-    g = ExGraph()
+    nd = addgraph!(ng, g, vmap)
+    push!(p, nd)
+end
+p
+end
 
-    exitnode = explore(s)
-    # exitnode = nothing if only variable assigments in expression
-    #          = ExNode of last calc otherwise
+#  top level graph
+g = ExGraph()
 
-    # id is 'nothing' for unnassigned last statement
-    exitnode!=nothing && ( g.seti[exitnode] = nothing )
+exitnode = explore(s)
+# exitnode = nothing if only variable assigments in expression
+#          = ExNode of last calc otherwise
 
-    # Resolve external symbols that are Functions, DataTypes or Modules
-    # and turn them into constants
-    for en in filter(n -> isa(n, NExt) & !in(n.main, svars) , keys(g.exti))
-        if isdefined(evalmod, en.main)  # is it defined
-            tv = evalmod.eval(en.main)
-            isa(tv, TypeConstructor) && error("[tograph] TypeConstructors not supported: $ex $(tv), use DataTypes")
-            if isa(tv, DataType) || isa(tv, Module) || isa(tv, Function)
-                delete!(g.exti, en)
-                nc = addnode!(g, NConst( tv ))
-                fusenodes(g, nc, en)
-            end
+# id is 'nothing' for unnassigned last statement
+exitnode!=nothing && ( g.seti[exitnode] = nothing )
+
+# Resolve external symbols that are Functions, DataTypes or Modules
+# and turn them into constants
+for en in filter(n -> isa(n, NExt) & !in(n.main, svars) , keys(g.exti))
+    if isdefined(evalmod, en.main)  # is it defined
+        tv = evalmod.eval(en.main)
+        isa(tv, TypeConstructor) && error("[tograph] TypeConstructors not supported: $ex $(tv), use DataTypes")
+        if isa(tv, DataType) || isa(tv, Module) || isa(tv, Function)
+            delete!(g.exti, en)
+            nc = addnode!(g, NConst( tv ))
+            fusenodes(g, nc, en)
         end
     end
+end
 
-    g
+g
 end

@@ -35,14 +35,14 @@ function rdiff(f::Function, sig0::Tuple; args...)
 
 
 	if VERSION >= v"0.5.0-"
-		fdef = fs[1].func
+		fdef = fs.ms[1].lambda_template
 		fcode =  Expr(:block, Base.uncompressed_ast(fdef)...)
 
 		# replace slotnames with their initial name
 		fcode = deslot(fcode, fdef.slotnames)
 
 		# function parameters
-		fargs = map(t -> symbol(t[1]), Base.arg_decl_parts(fs[1])[2][2:end])
+		fargs = map(t -> Symbol(t[1]), Base.arg_decl_parts(fs.ms[1])[2][2:end])
 	else
 		fdef = fs[1].func.code
 		flambda = Base.uncompressed_ast(fdef)
@@ -76,15 +76,17 @@ function deslot(ex::Expr, slotnames)
 end
 
 
+
+
 ### translation functions to recover a workable expression that can be differentiated
 
 # Simplifies expressions for processing
-#  - removes Topnodes and linenumbers,
+#  - removes GlobalRefs and linenumbers,
 #  - replaces GenSym() with actual symbol
 function streamline(ex0::Expr)
     ex = copy(ex0)
 
-    ex.head == :call && isa(ex.args[1], TopNode) && (ex.args[1] = ex.args[1].name)
+    ex.head == :call && isa(ex.args[1], GlobalRef) && (ex.args[1] = ex.args[1].name)
 
     args = Any[]
     for a in ex.args
@@ -94,7 +96,7 @@ function streamline(ex0::Expr)
         ar = if isa(a,Expr)
                 streamline(a)
              elseif isdefined(:GenSym) && isa(a, GenSym)
-                symbol("__gensym$(a.id)")
+                Symbol("__gensym$(a.id)")
              else
                 a
              end
@@ -105,7 +107,7 @@ end
 
 # converts expression to searchable strings
 function _e2s(ex::Expr, escape=false)
-    ex.head == :macrocall && ex.args[1] == symbol("@rg_str") && return(ex.args[2])
+    ex.head == :macrocall && ex.args[1] == Symbol("@rg_str") && return(ex.args[2])
 
     if ex.head == :call && ex.args[1] == :gotoifnot
         es = "↑gotoifnot"
@@ -126,7 +128,7 @@ function _e2s(thing, escape=false)
     if isa(thing, Symbol)
         res = ":" * string(thing)
     elseif isdefined(:GlobalRef) && isa(thing, GlobalRef)
-        res = _e2s(Expr(:., symbol(thing.mod), QuoteNode(thing.name)))
+        res = _e2s(Expr(:., Symbol(thing.mod), QuoteNode(thing.name)))
         # res = string(thing.mod) * "." * string(thing.name)
     else
         res = repr(thing)
@@ -163,7 +165,7 @@ function _s2e(s::AbstractString, pos=1)
         return nothing, cap.offsets[1]
     end
 
-    he  = symbol(cap.captures[1])
+    he  = Symbol(cap.captures[1])
     ar  = Any[]
     pos = cap.offsets[2]
     while s[pos] == '→' && !done(s, pos)
@@ -173,10 +175,10 @@ function _s2e(s::AbstractString, pos=1)
         if cap1[1] == '↑'
             ex, pos2 = _s2e(s, cap.offsets[1])
         elseif length(cap1) > 4 && cap1[1:3] == ":(:"    # Quotenodes
-            ex = QuoteNode(symbol(cap1[4:end-1]))
+            ex = QuoteNode(Symbol(cap1[4:end-1]))
             pos2 = cap.offsets[2]
         elseif cap1[1] == ':'        # symbols
-            ex = symbol(cap1[2:end])
+            ex = Symbol(cap1[2:end])
             pos2 = cap.offsets[2]
         else
             ex = parse(cap1)
@@ -264,7 +266,7 @@ function _transform(s::AbstractString)
 	pre, rg, idx, inside, post = formatch(s)
     if pre != nothing
         exin = _transform(inside)
-        ef = Expr(:for, Expr(:(=), symbol(idx[2:end]), s2e(rg)[1] ), exin)
+        ef = Expr(:for, Expr(:(=), Symbol(idx[2:end]), s2e(rg)[1] ), exin)
         return Expr(:block, [ s2e(pre) ; ef ; s2e(post)]...)
     else
         return Expr(:block, s2e(s)...)

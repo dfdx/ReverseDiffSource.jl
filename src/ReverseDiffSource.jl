@@ -17,7 +17,7 @@ module ReverseDiffSource
   const DERIV_PREFIX = "d"   # prefix of gradient variables
 
   ## misc functions
-  dprefix(v::Union{Symbol, AbstractString, Char}) = symbol("$DERIV_PREFIX$v")
+  dprefix(v::Union{Symbol, AbstractString, Char}) = Symbol("$DERIV_PREFIX$v")
 
   isSymbol(ex)   = isa(ex, Symbol)
   isDot(ex)      = isa(ex, Expr) && ex.head == :.   && isa(ex.args[1], Symbol)
@@ -29,7 +29,7 @@ module ReverseDiffSource
     global newvar
     function newvar(radix::Union{AbstractString, Symbol}=TEMP_NAME)
       vcount[radix] = haskey(vcount, radix) ? vcount[radix]+1 : 1
-      return symbol("$(radix)$(vcount[radix])")
+      return Symbol("$(radix)$(vcount[radix])")
     end
 
     global resetvar
